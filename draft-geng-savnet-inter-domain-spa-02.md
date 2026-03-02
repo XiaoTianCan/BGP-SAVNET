@@ -108,38 +108,38 @@ The mechanism proposed in this document generally consists of the following thre
 
 First, the neighboring AS, referred to as the Source AS, constructs the Customer Cone and its corresponding prefix set based on its local observations, with specific considerations for the following factors to ensure the comprehensiveness and accuracy of the constructed set:
 
-1. The Source AS constructs the Customer Cone (which includes itself) and the corresponding prefix set by integrating multiple authoritative data sources, primarily including local BGP routing information and RPKI data. This integration ensures that the prefix set is initially grounded in verifiable and widely-recognized routing and resource validation information.
+Step 1.1: The Source AS constructs the Customer Cone (which includes itself) and the corresponding prefix set by integrating multiple authoritative data sources, primarily including local BGP routing information and RPKI data. This integration ensures that the prefix set is initially grounded in verifiable and widely-recognized routing and resource validation information.
 
-2. For prefixes hidden in the DSR scenarios where prefixes that are not propagated through standard BGP routing and thus not captured by the above data sources, the Source AS adds such hidden prefixes to the constructed prefix set through administrative configuration. This step addresses the invisibility of DSR-related prefixes in normal routing propagation, preventing their omission from the Customer Cone.
+Step 1.2: For prefixes hidden in the DSR scenarios where prefixes that are not propagated through standard BGP routing and thus not captured by the above data sources, the Source AS adds such hidden prefixes to the constructed prefix set through administrative configuration. This step addresses the invisibility of DSR-related prefixes in normal routing propagation, preventing their omission from the Customer Cone.
 
-3. If the Source AS itself acts as a Validating AS for its downstream neighboring ASes (which serve as Source ASes relative to it), it incorporates the prefix information carried in the Source Prefix Advertisement (SPA) messages received from these downstream Source ASes. By integrating this SPA-sourced information with the locally derived Customer Cone and prefix data, the Source AS constructs a complete and accurate prefix set that reflects both its own resource scope and the valid prefixes of its downstream neighbors.
+Step 1.3: If the Source AS itself acts as a Validating AS for its downstream neighboring ASes (which serve as Source ASes relative to it), it incorporates the prefix information carried in the SPA messages received from these downstream Source ASes. By integrating this SPA-sourced information with the locally derived Customer Cone and prefix data, the Source AS constructs a complete and accurate prefix set that reflects both its own resource scope and the valid prefixes of its downstream neighbors.
 
-## Step 2: Advertise Customer Cone and Prefix set through SPA
+## Step 2: Advertise Customer Cone and Prefix Set through SPA
 
-Second, the Source AS generates Source Prefix Advertisement (SPA) messages — a new inter-domain message specifically defined in this document to carry Customer Cone and prefix information between ASes — and advertises the locally observed Customer Cone and its corresponding prefix set to the adjacent Validating AS (the AS responsible for performing source address validation on the interface connecting the two ASes). The detailed implementation of this step is as follows:
+Second, the Source AS generates SPA messages — a new inter-domain message specifically defined in this document to carry Customer Cone and prefix information between ASes — and advertises the locally observed Customer Cone and its corresponding prefix set to the adjacent Validating AS (the AS responsible for performing source address validation on the interface connecting the two ASes). The detailed implementation of this step is as follows:
 
 The Source AS may transmit the following required information to the Validating AS via one or more SPA messages:
 
-1. The set of AS numbers belonging to the Customer Cone observed locally by the Source AS. This set includes the Source AS itself and all ASes within its Customer Cone, providing the Validating AS with the hierarchical scope of the Source AS's Customer Cone.
+- The set of AS numbers belonging to the Customer Cone observed locally by the Source AS. This set includes the Source AS itself and all ASes within its Customer Cone, providing the Validating AS with the hierarchical scope of the Source AS's Customer Cone.
 
-2. The source prefix set of the Customer Cone observed locally by the Source AS. This set comprises all valid prefixes originated, delegated, or associated with the Customer Cone (including DSR-hidden prefixes added via administrative configuration, as specified in Step 1).
+- The source prefix set of the Customer Cone observed locally by the Source AS. This set comprises all valid prefixes originated, delegated, or associated with the Customer Cone (including DSR-hidden prefixes added via administrative configuration, as specified in Step 1).
 
-3. The AS number of the Source AS. This field serves as an identifier to enable the Validating AS to associate the received SPA message with the correct neighboring AS and the corresponding interface, avoiding confusion when multiple neighbors send SPA messages.
+- The AS number of the Source AS. This field serves as an identifier to enable the Validating AS to associate the received SPA message with the correct neighboring AS and the corresponding interface, avoiding confusion when multiple neighbors send SPA messages.
 
-4. An Update/Withdraw Flag. This flag is used to explicitly indicate whether the information carried in the SPA message is intended to update the existing Customer Cone or prefix set information (Update Flag) or to withdraw previously advertised Customer Cone or prefix set information (Withdraw Flag). This ensures the Validating AS can dynamically maintain the accuracy of its prefix allowlists as the Source AS's Customer Cone changes over time.
+- An Update/Withdraw Flag. This flag is used to explicitly indicate whether the information carried in the SPA message is intended to update the existing Customer Cone or prefix set information (Update Flag) or to withdraw previously advertised Customer Cone or prefix set information (Withdraw Flag). This ensures the Validating AS can dynamically maintain the accuracy of its prefix allowlists as the Source AS's Customer Cone changes over time.
 
 Upon receiving SPA messages from the Source AS, the Validating AS may propagate the received Customer Cone and prefix information within its own AS. However, the Validating AS MUST NOT propagate the received SPA messages to other ASes.
 
 It should be noted that detailed implementation aspects such as the specific session establishment method between the Source AS and the Validating AS, potential capability negotiation processes (e.g., confirming support for SPA messages), and the encapsulation format of SPA messages are out of the scope of this document and shall be defined in subsequent protocol extension documents.
 
 
-## Step 3: Constrcut prefix list by combining EFP-uRPF and SPA
+## Step 3: Construct Prefix List by Combining EFP-uRPF and SPA
 
 Third, the Validating AS constructs an accurate prefix allowlist for the interface connecting to the Source AS, following the core logic of the EFP-uRPF algorithm [RFC8704] and integrating the information received from SPA messages. The detailed implementation of this step is as follows:
 
-1. The Validating AS enables the EFP-uRPF algorithm (or some other algorithms like BAR-SAV {{I-D.ietf-sidrops-bar-sav}}) on the specific interface through which it receives SPA messages from the Source AS. This ensures that the source address validation mechanism is activated for the connection to that neighbor, aligning with the foundational approach of EFP-uRPF for customer and lateral peer interfaces.
+Step 3.1: The Validating AS enables the EFP-uRPF algorithm (or some other algorithms like BAR-SAV {{I-D.ietf-sidrops-bar-sav}}) on the specific interface through which it receives SPA messages from the Source AS. This ensures that the source address validation mechanism is activated for the connection to that neighbor, aligning with the foundational approach of EFP-uRPF for customer and lateral peer interfaces.
 
-2. The Validating AS merges two sets of information to form a complete and accurate prefix set for the interface: one is the Customer Cone and its corresponding prefix set generated locally by the Validating AS in accordance with the EFP-uRPF algorithm specified in [RFC8704] (integrating local BGP routing information, RPKI data, and other relevant sources); the other is the Customer Cone and prefix set information carried in the SPA messages advertised by the Source AS.
+Step 3.2: The Validating AS merges two sets of information to form a complete and accurate prefix set for the interface: one is the Customer Cone and its corresponding prefix set generated locally by the Validating AS in accordance with the EFP-uRPF algorithm specified in [RFC8704] (integrating local BGP routing information, RPKI data, and other relevant sources); the other is the Customer Cone and prefix set information carried in the SPA messages advertised by the Source AS.
 
 This merging process supplements the locally generated prefix set with the Source AS's observed Customer Cone and prefix information—information that the Validating AS may not be able to obtain through existing mechanisms due to factors such as BGP no-export communities or DSR. As a result, the combined prefix set becomes more comprehensive and accurate, effectively mitigating the risks of false positives and false negatives caused by incomplete locally constructed Customer Cone prefix sets.
 
